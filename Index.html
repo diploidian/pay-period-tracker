@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pay Period Tracker</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the monochromatic dark theme */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a; /* Very dark grey background */
+            color: #e0e0e0; /* Light grey text */
+        }
+        .container-card {
+            background-color: #2a2a2a; /* Slightly lighter card background */
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            border: 1px solid #3a3a3a;
+            transition: transform 0.3s ease;
+        }
+        .day-cell {
+            height: 40px; /* Reduced height for smaller font */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem; /* Smaller font for calendar day number */
+            cursor: default;
+            border-radius: 0.5rem;
+        }
+        /* Color codes */
+        .weekend {
+            color: #7d7d7d; /* Darker grey for weekends */
+            background-color: #222222;
+        }
+        .pay-period-day {
+            background-color: #3b3b3b; /* Highlight days within the pay period */
+        }
+        .current-period-weekend {
+            background-color: #333333;
+            color: #999999;
+        }
+        .today {
+            border: 2px solid #e0e0e0; /* White border for today */
+            font-weight: bold;
+        }
+        .start-end-date {
+            background-color: #555555; /* Darker highlight for start/end */
+            font-weight: bold;
+        }
+        input[type="number"] {
+            background-color: #3a3a3a;
+            border: 1px solid #5a5a5a;
+            color: #e0e0e0;
+        }
+        /* Tailwind is handling the collapse animation: max-h-0 for collapsed, a large max-height for open */
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex items-center justify-center">
+
+    <div id="app" class="w-full max-w-5xl container-card p-6 md:p-10 rounded-xl">
+        <!-- APP TITLE CHANGE & FONT REDUCTION -->
+        <h1 class="text-2xl md:text-3xl font-extrabold text-center mb-8 tracking-wider">
+            Pay Period Tracker
+        </h1>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- 1. Calendar View -->
+            <div class="lg:col-span-2">
+                <!-- CALENDAR ALIGNMENT FIX: Used flex-1 on the h2 for stable centering -->
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="changeMonth(-1)" class="p-2 rounded-lg hover:bg-neutral-700 transition duration-150">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <!-- text-lg font size reduced from text-xl -->
+                    <h2 id="current-month-year" class="flex-1 text-center text-lg font-semibold tracking-wide"></h2>
+                    <button onclick="changeMonth(1)" class="p-2 rounded-lg hover:bg-neutral-700 transition duration-150">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+
+                <div id="calendar-header" class="grid grid-cols-7 text-center font-bold text-xs uppercase mb-2 border-b border-t border-neutral-700 py-2">
+                    <div class="text-neutral-400">Sun</div>
+                    <div>Mon</div>
+                    <div>Tue</div>
+                    <div>Wed</div>
+                    <div>Thu</div>
+                    <div>Fri</div>
+                    <div class="text-neutral-400">Sat</div>
+                </div>
+
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+                    <!-- Calendar days will be inserted here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- 2. Stats and Calculator Panel -->
+            <div class="space-y-6">
+                
+                <!-- Pay Period Stats (Now updates based on selected month) -->
+                <div class="p-5 rounded-xl bg-neutral-800 border border-neutral-700">
+                    <h3 class="text-md font-bold mb-3 text-white">Selected Pay Period Summary</h3>
+                    <p id="pay-period-range" class="text-xs italic mb-3 text-neutral-400"></p>
+                    
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-neutral-300">Working Days (Mon-Fri):</span>
+                            <span id="working-days" class="font-bold text-xl text-white">0</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-neutral-300">Total Working Hours:</span>
+                            <!-- This will now display the adjusted hours -->
+                            <span id="working-hours" class="font-bold text-xl text-white">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculator (Collapsible) -->
+                <div class="p-5 rounded-xl bg-neutral-800 border border-neutral-700">
+                    <button onclick="toggleCalculator()" class="flex justify-between items-center w-full text-md font-bold text-white pb-2 focus:outline-none">
+                        Paycheck Calculator
+                        <span id="calculator-toggle-icon">
+                            <!-- Chevron down initial state (expanded) -->
+                            <svg class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </span>
+                    </button>
+
+                    <div id="calculator-content" class="transition-all duration-500 ease-in-out overflow-hidden max-h-[500px] space-y-3">
+                        <div class="space-y-3 pt-2">
+                            <div>
+                                <label for="hourly-wage" class="block text-xs font-medium text-neutral-400 mb-1">Hourly Wage ($)</label>
+                                <input type="number" id="hourly-wage" value="20.00" step="0.01" min="0" class="w-full p-2 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-white">
+                            </div>
+                            <div>
+                                <label for="tax-factor" class="block text-xs font-medium text-neutral-400 mb-1">Tax Factor (e.g., 30 for 30%)</label>
+                                <!-- Updated default value to 30, and max/step for percentage input -->
+                                <input type="number" id="tax-factor" value="30" step="1" min="0" max="100" class="w-full p-2 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-white">
+                            </div>
+                            <div>
+                                <label for="hours-per-day" class="block text-xs font-medium text-neutral-400 mb-1">Hours Per Working Day</label>
+                                <input type="number" id="hours-per-day" value="8" step="0.5" min="0" class="w-full p-2 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-white">
+                            </div>
+                            <!-- NEW INPUT: Hours Override Delta -->
+                            <div>
+                                <label for="hours-delta" class="block text-xs font-medium text-neutral-400 mb-1">Hours Override (e.g., -2 or +2.5)</label>
+                                <input type="number" id="hours-delta" value="0" step="0.5" class="w-full p-2 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-white">
+                            </div>
+                            <!-- END NEW INPUT -->
+                        </div>
+
+                        <div class="pt-3 border-t border-neutral-700 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-neutral-300 font-medium text-sm">Expected Gross Pay:</span>
+                                <span id="gross-pay" class="text-xl font-extrabold text-white">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-neutral-300 font-medium text-sm">Expected Net Pay:</span>
+                                <span id="net-pay" class="text-xl font-extrabold text-white">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state for calendar view
+        let currentCalendarDate = new Date();
+        const PAY_START_DAY = 26;
+        const PAY_END_DAY = 25;
+        let isCalculatorOpen = true; // Initial state: open
+        
+        // DOM Elements
+        const calendarGrid = document.getElementById('calendar-grid');
+        const monthYearDisplay = document.getElementById('current-month-year');
+        const workingDaysDisplay = document.getElementById('working-days');
+        const workingHoursDisplay = document.getElementById('working-hours');
+        const payPeriodRangeDisplay = document.getElementById('pay-period-range');
+        const grossPayDisplay = document.getElementById('gross-pay');
+        const netPayDisplay = document.getElementById('net-pay');
+        const wageInput = document.getElementById('hourly-wage');
+        const taxInput = document.getElementById('tax-factor');
+        const hoursPerDayInput = document.getElementById('hours-per-day');
+        const hoursDeltaInput = document.getElementById('hours-delta'); // NEW INPUT ELEMENT
+        const calculatorContent = document.getElementById('calculator-content');
+        const calculatorIcon = document.getElementById('calculator-toggle-icon');
+
+
+        // Utility: Calculates the pay period (26th of previous month to 25th of refDate's month).
+        // This is based on the month currently displayed in the calendar.
+        function calculatePayPeriodForView(refDate) {
+            const endMonth = refDate.getMonth();
+            const endYear = refDate.getFullYear();
+
+            // End date: 25th of the viewed month
+            const periodEnd = new Date(endYear, endMonth, PAY_END_DAY);
+            periodEnd.setHours(23, 59, 59, 999);
+
+            // Start date: 26th of the previous month
+            const periodStart = new Date(endYear, endMonth - 1, PAY_START_DAY);
+            periodStart.setHours(0, 0, 0, 0);
+
+            return { periodStart, periodEnd };
+        }
+
+        // Utility: Calculate working days (Mon-Fri) within a range
+        function calculateWorkingDays(startDate, endDate) {
+            let count = 0;
+            let current = new Date(startDate.getTime());
+            
+            while (current <= endDate) {
+                const day = current.getDay(); // 0 = Sunday, 6 = Saturday
+                if (day !== 0 && day !== 6) {
+                    count++; // It's a weekday
+                }
+                current.setDate(current.getDate() + 1);
+            }
+            return count;
+        }
+
+        // Core Rendering Function
+        function renderCalendar() {
+            calendarGrid.innerHTML = '';
+            
+            const month = currentCalendarDate.getMonth();
+            const year = currentCalendarDate.getFullYear();
+            
+            monthYearDisplay.textContent = currentCalendarDate.toLocaleDateString('en-US', {
+                month: 'long', 
+                year: 'numeric'
+            });
+
+            // 1. Determine the pay period based on the currently viewed month
+            const { periodStart, periodEnd } = calculatePayPeriodForView(currentCalendarDate);
+            const today = new Date();
+            
+            payPeriodRangeDisplay.textContent = `Period: ${periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+
+            // 2. Calendar grid setup
+            const firstDayOfMonth = new Date(year, month, 1);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const startingDayOfWeek = firstDayOfMonth.getDay(); // 0 for Sunday
+
+            // Add empty cells for padding
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'day-cell';
+                calendarGrid.appendChild(emptyCell);
+            }
+
+            // Add day cells
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const isToday = date.toDateString() === today.toDateString();
+                const dayOfWeek = date.getDay(); // 0=Sun, 6=Sat
+                
+                let classes = ['day-cell', 'text-center', 'rounded-lg'];
+
+                // Weekday / Weekend colors
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    classes.push('weekend');
+                } else {
+                    classes.push('text-white');
+                }
+
+                // Check if the date is within the selected pay period
+                const isInPayPeriod = date >= periodStart && date <= periodEnd;
+
+                if (isInPayPeriod) {
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        classes.push('current-period-weekend');
+                    } else {
+                        classes.push('pay-period-day');
+                    }
+                }
+                
+                // Highlight start/end dates
+                if (date.toDateString() === periodStart.toDateString() || date.toDateString() === periodEnd.toDateString()) {
+                    classes.push('start-end-date');
+                }
+
+                // Highlight today
+                if (isToday) {
+                    classes.push('today');
+                }
+
+                const cell = document.createElement('div');
+                cell.className = classes.join(' ');
+                cell.textContent = day;
+                
+                calendarGrid.appendChild(cell);
+            }
+
+            // 3. Update stats and calculator
+            updateStats(periodStart, periodEnd);
+            updateCalculator(periodStart, periodEnd);
+        }
+        
+        // Stats Update Function: Only handles working days count
+        function updateStats(periodStart, periodEnd) {
+            const workingDays = calculateWorkingDays(periodStart, periodEnd);
+            workingDaysDisplay.textContent = workingDays;
+        }
+
+        // Calculator Update Function
+        function updateCalculator(periodStart, periodEnd) {
+            const wage = parseFloat(wageInput.value) || 0;
+            const rawTaxInput = parseFloat(taxInput.value) || 0;
+            const hoursPerDay = parseFloat(hoursPerDayInput.value) || 0;
+            const hoursDelta = parseFloat(hoursDeltaInput.value) || 0; // GET HOUR OVERRIDE
+            
+            // 1. Calculate Expected Hours
+            const workingDays = calculateWorkingDays(periodStart, periodEnd);
+            const expectedHours = workingDays * hoursPerDay;
+
+            // 2. Apply Override (Delta)
+            const totalHours = expectedHours + hoursDelta;
+            
+            // Update the display for the final hours used in calculation
+            workingHoursDisplay.textContent = totalHours.toFixed(1);
+
+            // 3. Calculate Pay
+            const grossPay = totalHours * wage;
+            
+            // Convert tax input (e.g., 30) to factor (e.g., 0.30)
+            const taxFactor = rawTaxInput / 100;
+            
+            // Cap tax factor between 0 and 1 before calculation
+            const clampedTaxFactor = Math.min(Math.max(taxFactor, 0), 1); 
+
+            const netPay = grossPay * (1 - clampedTaxFactor); 
+
+            grossPayDisplay.textContent = `$${grossPay.toFixed(2)}`;
+            netPayDisplay.textContent = `$${netPay.toFixed(2)}`;
+        }
+        
+        // Calendar Navigation Function
+        function changeMonth(delta) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        // Calculator Toggle Function
+        function toggleCalculator() {
+            isCalculatorOpen = !isCalculatorOpen;
+
+            if (isCalculatorOpen) {
+                calculatorContent.style.maxHeight = '500px'; // Arbitrarily large enough height for transition
+                calculatorIcon.style.transform = 'rotate(0deg)';
+            } else {
+                calculatorContent.style.maxHeight = '0'; // Collapse
+                calculatorIcon.style.transform = 'rotate(-180deg)';
+            }
+        }
+
+        // Add event listeners for calculator inputs
+        const handleInput = () => {
+            const { periodStart, periodEnd } = calculatePayPeriodForView(currentCalendarDate);
+            updateCalculator(periodStart, periodEnd);
+        };
+
+        wageInput.addEventListener('input', handleInput);
+        taxInput.addEventListener('input', handleInput);
+        hoursPerDayInput.addEventListener('input', handleInput);
+        hoursDeltaInput.addEventListener('input', handleInput); // ADDED LISTENER FOR DELTA INPUT
+
+        // Initial render on load
+        window.onload = function() {
+            // Set the calendar to the current month by default
+            currentCalendarDate = new Date();
+            renderCalendar();
+        };
+
+    </script>
+</body>
+</html>
